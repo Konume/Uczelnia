@@ -18,8 +18,7 @@ const SubjectItem = ({ subject, onDelete, onEdit, onUpdate }) => {
             <input
                 type="checkbox"
                 checked={subject.inStock}
-                onChange={handleCheckboxChange}
-            />
+                onChange={handleCheckboxChange} />
             In Stock
             <button className="delete-btn" onClick={() => onDelete(subject.id)}>Delete</button>
             <button className="edit-btn" onClick={() => onEdit(subject)}>Edit</button>
