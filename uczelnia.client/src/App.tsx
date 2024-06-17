@@ -9,7 +9,7 @@ const SubjectItem = ({ subject, onDelete, onEdit, onUpdate }) => {
     };
 
     const itemStyle = {
-        color: subject.inStock ? 'gray' : 'black',  // Czarny kolor tekstu dla inStock true, szary dla false
+        color: subject.inStock ? 'white' : 'gray', // Czarny kolor tekstu dla inStock true, szary dla false
     };
 
     return (
@@ -27,11 +27,11 @@ const SubjectItem = ({ subject, onDelete, onEdit, onUpdate }) => {
     );
 };
 
-const SubjectList = ({ subjects, onDelete, onEdit, onUpdate }) => {
+const SubjectList = ({ subjects, onDelete, onEdit }) => {
     return (
         <ul>
             {subjects.map(subject => (
-                <SubjectItem key={subject.id} subject={subject} onDelete={onDelete} onEdit={onEdit} onUpdate={onUpdate} />
+                <SubjectItem key={subject.id} subject={subject} onDelete={onDelete} onEdit={onEdit} />
             ))}
         </ul>
     );
@@ -62,6 +62,7 @@ const SubjectForm = ({ subject, setSubject, saveSubject, cancelEdit }) => {
 
 function App() {
     const [subjects, setSubjects] = useState([]);
+    const [newSubject, setNewSubject] = useState({ name: '', inStock: false });
     const [editingSubject, setEditingSubject] = useState(null);
     const [error, setError] = useState(null);
 
@@ -80,20 +81,21 @@ function App() {
         }
     };
 
-    const addSubject = async (newSubject) => {
+    const addSubject = async () => {
         try {
             const response = await axios.post('http://localhost:5197/api/Subjects', newSubject);
             setSubjects([...subjects, response.data]);
+            setNewSubject({ name: '', inStock: false });
         } catch (error) {
             console.error('Error adding subject:', error);
             setError('Error adding subject');
         }
     };
 
-    const updateSubject = async (subjectToUpdate) => {
+    const updateSubject = async () => {
         try {
-            await axios.put(`http://localhost:5197/api/Subjects/${subjectToUpdate.id}`, subjectToUpdate);
-            setSubjects(subjects.map(sub => (sub.id === subjectToUpdate.id ? subjectToUpdate : sub)));
+            await axios.put(`http://localhost:5197/api/Subjects/${editingSubject.id}`, editingSubject);
+            setSubjects(subjects.map(sub => (sub.id === editingSubject.id ? editingSubject : sub)));
             setEditingSubject(null);
         } catch (error) {
             console.error('Error updating subject:', error);
@@ -119,18 +121,6 @@ function App() {
         setEditingSubject(null);
     };
 
-    const saveSubject = () => {
-        if (editingSubject) {
-            updateSubject(editingSubject);
-        } else {
-            addSubject(editingSubject);
-        }
-    };
-
-    const handleUpdateSubject = (updatedSubject) => {
-        updateSubject(updatedSubject);
-    };
-
     if (error) {
         return <div>Error: {error}</div>;
     }
@@ -142,17 +132,17 @@ function App() {
                 <SubjectForm
                     subject={editingSubject}
                     setSubject={setEditingSubject}
-                    saveSubject={saveSubject}
+                    saveSubject={updateSubject}
                     cancelEdit={cancelEdit}
                 />
             ) : (
                 <SubjectForm
-                    subject={{ name: '', inStock: false }}
-                    setSubject={setEditingSubject}
-                    saveSubject={saveSubject}
+                    subject={newSubject}
+                    setSubject={setNewSubject}
+                    saveSubject={addSubject}
                 />
             )}
-            <SubjectList subjects={subjects} onDelete={deleteSubject} onEdit={startEditing} onUpdate={handleUpdateSubject} />
+            <SubjectList subjects={subjects} onDelete={deleteSubject} onEdit={startEditing} />
         </div>
     );
 }
