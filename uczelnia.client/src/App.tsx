@@ -1,17 +1,69 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-interface Subjects {
-    id: number;
-    name: string;
-    inStock: boolean; // Poprawione: bool na boolean
-    // inne w³aœciwoœci
-}
+const SubjectItem = ({ subject, onDelete, onEdit, onUpdate }) => {
+    const handleCheckboxChange = () => {
+        const updatedSubject = { ...subject, inStock: !subject.inStock };
+        onUpdate(updatedSubject);
+    };
+
+    const itemStyle = {
+        color: subject.inStock ? 'gray' : 'black',  // Czarny kolor tekstu dla inStock true, szary dla false
+    };
+
+    return (
+        <li style={itemStyle}>
+            {subject.id}. {subject.name}
+            <input
+                type="checkbox"
+                checked={subject.inStock}
+                onChange={handleCheckboxChange}
+            />
+            In Stock
+            <button className="delete-btn" onClick={() => onDelete(subject.id)}>Delete</button>
+            <button className="edit-btn" onClick={() => onEdit(subject)}>Edit</button>
+        </li>
+    );
+};
+
+const SubjectList = ({ subjects, onDelete, onEdit, onUpdate }) => {
+    return (
+        <ul>
+            {subjects.map(subject => (
+                <SubjectItem key={subject.id} subject={subject} onDelete={onDelete} onEdit={onEdit} onUpdate={onUpdate} />
+            ))}
+        </ul>
+    );
+};
+
+const SubjectForm = ({ subject, setSubject, saveSubject, cancelEdit }) => {
+    return (
+        <div>
+            <input
+                type="text"
+                placeholder="New product"
+                value={subject.name}
+                onChange={(e) => setSubject({ ...subject, name: e.target.value })}
+            />
+            <label>
+                <input
+                    type="checkbox"
+                    checked={subject.inStock}
+                    onChange={(e) => setSubject({ ...subject, inStock: e.target.checked })}
+                />
+                In stock
+            </label>
+            <button onClick={saveSubject}>Save</button>
+            {cancelEdit && <button onClick={cancelEdit}>Cancel</button>}
+        </div>
+    );
+};
 
 function App() {
-    const [subjects, setSubjects] = useState<Subjects[]>([]);
-    const [newSubjectName, setNewSubjectName] = useState('');
+    const [subjects, setSubjects] = useState([]);
+    const [editingSubject, setEditingSubject] = useState(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         fetchSubjects();
@@ -19,51 +71,88 @@ function App() {
 
     const fetchSubjects = async () => {
         try {
-            const response = await axios.get('/api/Subjects');
-
+            const response = await axios.get('http://localhost:5197/api/Subjects');
             console.log('Received subjects:', response.data);
             setSubjects(response.data);
         } catch (error) {
             console.error('Error fetching subjects:', error);
+            setError('Error fetching subjects');
         }
     };
 
-    const addSubject = async () => {
+    const addSubject = async (newSubject) => {
         try {
-            const response = await axios.post('/api/Subjects', { name: newSubjectName });
+            const response = await axios.post('http://localhost:5197/api/Subjects', newSubject);
             setSubjects([...subjects, response.data]);
-            setNewSubjectName('');
         } catch (error) {
             console.error('Error adding subject:', error);
+            setError('Error adding subject');
         }
     };
 
-    const deleteSubject = async (id: number) => {
+    const updateSubject = async (subjectToUpdate) => {
         try {
-            await axios.delete(`/api/Subjects/${id}`);
+            await axios.put(`http://localhost:5197/api/Subjects/${subjectToUpdate.id}`, subjectToUpdate);
+            setSubjects(subjects.map(sub => (sub.id === subjectToUpdate.id ? subjectToUpdate : sub)));
+            setEditingSubject(null);
+        } catch (error) {
+            console.error('Error updating subject:', error);
+            setError('Error updating subject');
+        }
+    };
+
+    const deleteSubject = async (id) => {
+        try {
+            await axios.delete(`http://localhost:5197/api/Subjects/${id}`);
             setSubjects(subjects.filter(subject => subject.id !== id));
         } catch (error) {
             console.error('Error deleting subject:', error);
+            setError('Error deleting subject');
         }
     };
+
+    const startEditing = (subject) => {
+        setEditingSubject(subject);
+    };
+
+    const cancelEdit = () => {
+        setEditingSubject(null);
+    };
+
+    const saveSubject = () => {
+        if (editingSubject) {
+            updateSubject(editingSubject);
+        } else {
+            addSubject(editingSubject);
+        }
+    };
+
+    const handleUpdateSubject = (updatedSubject) => {
+        updateSubject(updatedSubject);
+    };
+
+    if (error) {
+        return <div>Error: {error}</div>;
+    }
 
     return (
         <div>
             <h1>Subjects</h1>
-            <ul>
-                {subjects.map(subject => (
-                    <li key={subject.id}>
-                        {subject.name}
-                        <button onClick={() => deleteSubject(subject.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-            <input
-                type="text"
-                value={newSubjectName}
-                onChange={(e) => setNewSubjectName(e.target.value)}
-            />
-            <button onClick={addSubject}>Add Subject</button>
+            {editingSubject ? (
+                <SubjectForm
+                    subject={editingSubject}
+                    setSubject={setEditingSubject}
+                    saveSubject={saveSubject}
+                    cancelEdit={cancelEdit}
+                />
+            ) : (
+                <SubjectForm
+                    subject={{ name: '', inStock: false }}
+                    setSubject={setEditingSubject}
+                    saveSubject={saveSubject}
+                />
+            )}
+            <SubjectList subjects={subjects} onDelete={deleteSubject} onEdit={startEditing} onUpdate={handleUpdateSubject} />
         </div>
     );
 }
